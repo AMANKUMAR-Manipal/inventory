@@ -39,13 +39,15 @@ import {
 import { formatDate, calculateStockStatus, getStockStatusColor } from "@/lib/utils";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { InventoryWithDetails } from "@shared/schema";
+import StockAdjustmentForm from "@/components/StockAdjustmentForm";
 
 export default function InventoryList() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
-  const [stockStatusFilter, setStockStatusFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("all");
+  const [stockStatusFilter, setStockStatusFilter] = useState("all");
+  const [stockAdjustmentOpen, setStockAdjustmentOpen] = useState(false);
   
   const { data: inventory, isLoading } = useQuery({
     queryKey: ['/api/inventory'],
@@ -185,7 +187,7 @@ export default function InventoryList() {
   ];
   
   // Filter inventory based on search and filters
-  const filteredInventory = inventory?.filter((item: InventoryWithDetails) => {
+  const filteredInventory = (inventory || []).filter((item: InventoryWithDetails) => {
     // Apply search filter
     if (search && !(
       (item.productName && item.productName.toLowerCase().includes(search.toLowerCase())) ||
@@ -197,17 +199,17 @@ export default function InventoryList() {
     }
     
     // Apply category filter
-    if (categoryFilter && item.categoryName !== categoryFilter) {
+    if (categoryFilter && categoryFilter !== "all" && item.categoryName !== categoryFilter) {
       return false;
     }
     
     // Apply location filter
-    if (locationFilter && item.locationName !== locationFilter) {
+    if (locationFilter && locationFilter !== "all" && item.locationName !== locationFilter) {
       return false;
     }
     
     // Apply stock status filter
-    if (stockStatusFilter) {
+    if (stockStatusFilter && stockStatusFilter !== "all") {
       const status = calculateStockStatus(item.quantity, item.minStockLevel || 0);
       if (status !== stockStatusFilter) {
         return false;
@@ -229,7 +231,10 @@ export default function InventoryList() {
             <DownloadIcon className="h-4 w-4" />
             Export
           </Button>
-          <Button className="flex items-center gap-2">
+          <Button 
+            className="flex items-center gap-2"
+            onClick={() => setStockAdjustmentOpen(true)}
+          >
             <PlusIcon className="h-4 w-4" />
             Add Item
           </Button>
@@ -254,7 +259,7 @@ export default function InventoryList() {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {categories?.map((category: any) => (
                     <SelectItem key={category.id} value={category.name}>
                       {category.name}
@@ -269,7 +274,7 @@ export default function InventoryList() {
                   <SelectValue placeholder="All Locations" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Locations</SelectItem>
+                  <SelectItem value="all">All Locations</SelectItem>
                   {locations?.map((location: any) => (
                     <SelectItem key={location.id} value={location.name}>
                       {location.name}
@@ -284,7 +289,7 @@ export default function InventoryList() {
                   <SelectValue placeholder="All Stock Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Stock Status</SelectItem>
+                  <SelectItem value="all">All Stock Status</SelectItem>
                   <SelectItem value="In Stock">In Stock</SelectItem>
                   <SelectItem value="Low Stock">Low Stock</SelectItem>
                   <SelectItem value="Out of Stock">Out of Stock</SelectItem>
@@ -300,6 +305,11 @@ export default function InventoryList() {
         data={filteredInventory || []}
         searchColumn="productName"
         isLoading={isLoading}
+      />
+      
+      <StockAdjustmentForm
+        open={stockAdjustmentOpen}
+        onOpenChange={setStockAdjustmentOpen}
       />
     </div>
   );
