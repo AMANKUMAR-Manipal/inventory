@@ -431,7 +431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createStockMovement({
         productId: inventoryData.productId,
         locationId: inventoryData.locationId,
-        quantity: inventoryData.quantity,
+        quantity: inventoryData.quantity ?? 0, // Use default value if undefined
         note: "Initial inventory"
       });
       

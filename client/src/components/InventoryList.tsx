@@ -260,7 +260,7 @@ export default function InventoryList() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {categories?.map((category: any) => (
+                  {(categories || []).map((category: any) => (
                     <SelectItem key={category.id} value={category.name}>
                       {category.name}
                     </SelectItem>
@@ -275,7 +275,7 @@ export default function InventoryList() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Locations</SelectItem>
-                  {locations?.map((location: any) => (
+                  {(locations || []).map((location: any) => (
                     <SelectItem key={location.id} value={location.name}>
                       {location.name}
                     </SelectItem>
