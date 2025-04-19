@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, timestamp, real, unique } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -38,7 +39,7 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   sku: text("sku").notNull().unique(),
   description: text("description"),
-  categoryId: integer("category_id").notNull(),
+  categoryId: integer("category_id").notNull().references(() => categories.id),
   unitCost: real("unit_cost").notNull().default(0),
   minStockLevel: integer("min_stock_level").notNull().default(10),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -60,8 +61,8 @@ export type Product = typeof products.$inferSelect;
 // Inventory Items
 export const inventory = pgTable("inventory", {
   id: serial("id").primaryKey(),
-  productId: integer("product_id").notNull(),
-  locationId: integer("location_id").notNull(),
+  productId: integer("product_id").notNull().references(() => products.id),
+  locationId: integer("location_id").notNull().references(() => locations.id),
   quantity: integer("quantity").notNull().default(0),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => {
@@ -82,8 +83,8 @@ export type Inventory = typeof inventory.$inferSelect;
 // Stock Movement History
 export const stockMovements = pgTable("stock_movements", {
   id: serial("id").primaryKey(),
-  productId: integer("product_id").notNull(),
-  locationId: integer("location_id").notNull(),
+  productId: integer("product_id").notNull().references(() => products.id),
+  locationId: integer("location_id").notNull().references(() => locations.id),
   quantity: integer("quantity").notNull(), // Can be negative for removals
   note: text("note"),
   timestamp: timestamp("timestamp").notNull().defaultNow(),
@@ -141,3 +142,44 @@ export const StockStatus = {
 } as const;
 
 export type StockStatusType = typeof StockStatus[keyof typeof StockStatus];
+
+// Define relations for better querying
+export const categoriesRelations = relations(categories, ({ many }: { many: any }) => ({
+  products: many(products),
+}));
+
+export const locationsRelations = relations(locations, ({ many }) => ({
+  inventory: many(inventory),
+  stockMovements: many(stockMovements),
+}));
+
+export const productsRelations = relations(products, ({ one, many }) => ({
+  category: one(categories, {
+    fields: [products.categoryId],
+    references: [categories.id],
+  }),
+  inventory: many(inventory),
+  stockMovements: many(stockMovements),
+}));
+
+export const inventoryRelations = relations(inventory, ({ one }) => ({
+  product: one(products, {
+    fields: [inventory.productId],
+    references: [products.id],
+  }),
+  location: one(locations, {
+    fields: [inventory.locationId],
+    references: [locations.id],
+  }),
+}));
+
+export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
+  product: one(products, {
+    fields: [stockMovements.productId],
+    references: [products.id],
+  }),
+  location: one(locations, {
+    fields: [stockMovements.locationId],
+    references: [locations.id],
+  }),
+}));
