@@ -100,14 +100,18 @@ export const insertStockMovementSchema = createInsertSchema(stockMovements).pick
 export type InsertStockMovement = z.infer<typeof insertStockMovementSchema>;
 export type StockMovement = typeof stockMovements.$inferSelect;
 
-// Users (for completeness, using the existing user structure)
+// Users for authentication
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  name: text("name").notNull(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
+  name: true,
   username: true,
   password: true,
 });
