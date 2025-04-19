@@ -43,8 +43,8 @@ import type { ProductWithDetails } from "@shared/schema";
 export default function ProductsPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [stockStatusFilter, setStockStatusFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [stockStatusFilter, setStockStatusFilter] = useState("all");
   const [productFormOpen, setProductFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
   
@@ -215,7 +215,7 @@ export default function ProductsPage() {
   ];
   
   // Filter products based on search and filters
-  const filteredProducts = products?.filter((product) => {
+  const filteredProducts = (products || []).filter((product) => {
     // Apply search filter
     if (search && !(
       product.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -227,12 +227,12 @@ export default function ProductsPage() {
     }
     
     // Apply category filter
-    if (categoryFilter && product.categoryName !== categoryFilter) {
+    if (categoryFilter && categoryFilter !== "all" && product.categoryName !== categoryFilter) {
       return false;
     }
     
     // Apply stock status filter
-    if (stockStatusFilter) {
+    if (stockStatusFilter && stockStatusFilter !== "all") {
       const status = calculateStockStatus(product.stockQuantity || 0, product.minStockLevel);
       if (status !== stockStatusFilter) {
         return false;
@@ -289,8 +289,8 @@ export default function ProductsPage() {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
-                  {categories?.map((category: any) => (
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {(categories || []).map((category: any) => (
                     <SelectItem key={category.id} value={category.name}>
                       {category.name}
                     </SelectItem>
@@ -304,7 +304,7 @@ export default function ProductsPage() {
                   <SelectValue placeholder="All Stock Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Stock Status</SelectItem>
+                  <SelectItem value="all">All Stock Status</SelectItem>
                   <SelectItem value="In Stock">In Stock</SelectItem>
                   <SelectItem value="Low Stock">Low Stock</SelectItem>
                   <SelectItem value="Out of Stock">Out of Stock</SelectItem>

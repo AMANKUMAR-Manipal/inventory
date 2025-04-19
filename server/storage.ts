@@ -1,17 +1,15 @@
+import { eq, and, desc, sql, count, asc } from "drizzle-orm";
+import { db } from "./db";
 import { 
-  type User, type InsertUser, 
-  type Product, type InsertProduct, 
-  type Category, type InsertCategory,
-  type Location, type InsertLocation,
-  type Inventory, type InsertInventory,
-  type StockMovement, type InsertStockMovement,
-  type ProductWithDetails,
-  type InventoryWithDetails,
-  type StockMovementWithDetails,
+  users, type User, type InsertUser,
+  categories, type Category, type InsertCategory,
+  locations, type Location, type InsertLocation,
+  products, type Product, type InsertProduct, type ProductWithDetails,
+  inventory, type Inventory, type InsertInventory, type InventoryWithDetails,
+  stockMovements, type StockMovement, type InsertStockMovement, type StockMovementWithDetails,
   StockStatus
 } from "@shared/schema";
 
-// Interface for all storage operations
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -69,531 +67,330 @@ export interface IStorage {
   getRecentStockMovements(limit: number): Promise<StockMovementWithDetails[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private categories: Map<number, Category>;
-  private locations: Map<number, Location>;
-  private products: Map<number, Product>;
-  private inventory: Map<number, Inventory>;
-  private stockMovements: Map<number, StockMovement>;
-  
-  private userId: number;
-  private categoryId: number;
-  private locationId: number;
-  private productId: number;
-  private inventoryId: number;
-  private stockMovementId: number;
-  
-  constructor() {
-    this.users = new Map();
-    this.categories = new Map();
-    this.locations = new Map();
-    this.products = new Map();
-    this.inventory = new Map();
-    this.stockMovements = new Map();
-    
-    this.userId = 1;
-    this.categoryId = 1;
-    this.locationId = 1;
-    this.productId = 1;
-    this.inventoryId = 1;
-    this.stockMovementId = 1;
-    
-    // Initialize with some default data
-    this.initializeDefaultData();
-  }
-  
-  // User methods
+export class DatabaseStorage implements IStorage {
+  // User operations
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-  
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-  
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
-  
-  // Category methods
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  // Category operations
   async getCategories(): Promise<Category[]> {
-    return Array.from(this.categories.values());
+    return await db.select().from(categories);
   }
-  
+
   async getCategory(id: number): Promise<Category | undefined> {
-    return this.categories.get(id);
-  }
-  
-  async getCategoryByName(name: string): Promise<Category | undefined> {
-    return Array.from(this.categories.values()).find(
-      (category) => category.name === name,
-    );
-  }
-  
-  async createCategory(insertCategory: InsertCategory): Promise<Category> {
-    const id = this.categoryId++;
-    const category: Category = { ...insertCategory, id };
-    this.categories.set(id, category);
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
     return category;
   }
-  
+
+  async getCategoryByName(name: string): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.name, name));
+    return category;
+  }
+
+  async createCategory(insertCategory: InsertCategory): Promise<Category> {
+    const [category] = await db.insert(categories).values(insertCategory).returning();
+    return category;
+  }
+
   async updateCategory(id: number, updateData: Partial<InsertCategory>): Promise<Category | undefined> {
-    const category = this.categories.get(id);
-    if (!category) return undefined;
-    
-    const updatedCategory = { ...category, ...updateData };
-    this.categories.set(id, updatedCategory);
+    const [updatedCategory] = await db
+      .update(categories)
+      .set(updateData)
+      .where(eq(categories.id, id))
+      .returning();
     return updatedCategory;
   }
-  
+
   async deleteCategory(id: number): Promise<boolean> {
-    return this.categories.delete(id);
+    const result = await db.delete(categories).where(eq(categories.id, id));
+    return true; // If no error is thrown, delete succeeded
   }
-  
-  // Location methods
+
+  // Location operations
   async getLocations(): Promise<Location[]> {
-    return Array.from(this.locations.values());
+    return await db.select().from(locations);
   }
-  
+
   async getLocation(id: number): Promise<Location | undefined> {
-    return this.locations.get(id);
-  }
-  
-  async getLocationByName(name: string): Promise<Location | undefined> {
-    return Array.from(this.locations.values()).find(
-      (location) => location.name === name,
-    );
-  }
-  
-  async createLocation(insertLocation: InsertLocation): Promise<Location> {
-    const id = this.locationId++;
-    const location: Location = { ...insertLocation, id };
-    this.locations.set(id, location);
+    const [location] = await db.select().from(locations).where(eq(locations.id, id));
     return location;
   }
-  
+
+  async getLocationByName(name: string): Promise<Location | undefined> {
+    const [location] = await db.select().from(locations).where(eq(locations.name, name));
+    return location;
+  }
+
+  async createLocation(insertLocation: InsertLocation): Promise<Location> {
+    const [location] = await db.insert(locations).values(insertLocation).returning();
+    return location;
+  }
+
   async updateLocation(id: number, updateData: Partial<InsertLocation>): Promise<Location | undefined> {
-    const location = this.locations.get(id);
-    if (!location) return undefined;
-    
-    const updatedLocation = { ...location, ...updateData };
-    this.locations.set(id, updatedLocation);
+    const [updatedLocation] = await db
+      .update(locations)
+      .set(updateData)
+      .where(eq(locations.id, id))
+      .returning();
     return updatedLocation;
   }
-  
+
   async deleteLocation(id: number): Promise<boolean> {
-    return this.locations.delete(id);
+    const result = await db.delete(locations).where(eq(locations.id, id));
+    return true; // If no error is thrown, delete succeeded
   }
-  
-  // Product methods
+
+  // Product operations
   async getProducts(): Promise<Product[]> {
-    return Array.from(this.products.values());
+    return await db.select().from(products);
   }
-  
+
   async getProductsWithDetails(): Promise<ProductWithDetails[]> {
-    const products = await this.getProducts();
-    return products.map(product => {
-      const category = this.categories.get(product.categoryId);
-      
-      // Calculate total stock across all locations
-      let stockQuantity = 0;
-      Array.from(this.inventory.values()).forEach(inv => {
-        if (inv.productId === product.id) {
-          stockQuantity += inv.quantity;
-        }
-      });
-      
-      return {
-        ...product,
-        categoryName: category?.name,
-        stockQuantity
-      };
-    });
+    const productsData = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        sku: products.sku,
+        description: products.description,
+        categoryId: products.categoryId,
+        unitCost: products.unitCost,
+        minStockLevel: products.minStockLevel,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        categoryName: categories.name,
+      })
+      .from(products)
+      .leftJoin(categories, eq(products.categoryId, categories.id));
+
+    // Add stock quantity information by total across all locations
+    const stockQuantities = await db
+      .select({
+        productId: inventory.productId,
+        totalQuantity: sql<number>`SUM(${inventory.quantity})`,
+      })
+      .from(inventory)
+      .groupBy(inventory.productId);
+
+    const stockMap = new Map<number, number>();
+    for (const stock of stockQuantities) {
+      stockMap.set(stock.productId, stock.totalQuantity);
+    }
+
+    return productsData.map(product => ({
+      ...product,
+      stockQuantity: stockMap.get(product.id) || 0,
+    }));
   }
-  
+
   async getProduct(id: number): Promise<Product | undefined> {
-    return this.products.get(id);
-  }
-  
-  async getProductBySku(sku: string): Promise<Product | undefined> {
-    return Array.from(this.products.values()).find(
-      (product) => product.sku === sku,
-    );
-  }
-  
-  async createProduct(insertProduct: InsertProduct): Promise<Product> {
-    const id = this.productId++;
-    const now = new Date();
-    const product: Product = { 
-      ...insertProduct, 
-      id, 
-      createdAt: now, 
-      updatedAt: now 
-    };
-    this.products.set(id, product);
+    const [product] = await db.select().from(products).where(eq(products.id, id));
     return product;
   }
-  
+
+  async getProductBySku(sku: string): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.sku, sku));
+    return product;
+  }
+
+  async createProduct(insertProduct: InsertProduct): Promise<Product> {
+    const [product] = await db.insert(products).values(insertProduct).returning();
+    return product;
+  }
+
   async updateProduct(id: number, updateData: Partial<InsertProduct>): Promise<Product | undefined> {
-    const product = this.products.get(id);
-    if (!product) return undefined;
-    
-    const updatedProduct: Product = { 
-      ...product, 
-      ...updateData, 
-      updatedAt: new Date() 
-    };
-    this.products.set(id, updatedProduct);
+    const [updatedProduct] = await db
+      .update(products)
+      .set(updateData)
+      .where(eq(products.id, id))
+      .returning();
     return updatedProduct;
   }
-  
+
   async deleteProduct(id: number): Promise<boolean> {
-    return this.products.delete(id);
+    const result = await db.delete(products).where(eq(products.id, id));
+    return true; // If no error is thrown, delete succeeded
   }
-  
-  // Inventory methods
+
+  // Inventory operations
   async getInventoryItems(): Promise<Inventory[]> {
-    return Array.from(this.inventory.values());
+    return await db.select().from(inventory);
   }
-  
+
   async getInventoryItemsWithDetails(): Promise<InventoryWithDetails[]> {
-    const inventoryItems = await this.getInventoryItems();
-    return inventoryItems.map(item => {
-      const product = this.products.get(item.productId);
-      const location = this.locations.get(item.locationId);
-      const category = product ? this.categories.get(product.categoryId) : undefined;
-      
-      return {
-        ...item,
-        productName: product?.name,
-        productSku: product?.sku,
-        categoryName: category?.name,
-        locationName: location?.name,
-        minStockLevel: product?.minStockLevel
-      };
-    });
+    return await db
+      .select({
+        id: inventory.id,
+        productId: inventory.productId,
+        locationId: inventory.locationId,
+        quantity: inventory.quantity,
+        updatedAt: inventory.updatedAt,
+        productName: products.name,
+        productSku: products.sku,
+        categoryName: categories.name,
+        locationName: locations.name,
+        minStockLevel: products.minStockLevel,
+      })
+      .from(inventory)
+      .leftJoin(products, eq(inventory.productId, products.id))
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .leftJoin(locations, eq(inventory.locationId, locations.id));
   }
-  
+
   async getInventoryItem(id: number): Promise<Inventory | undefined> {
-    return this.inventory.get(id);
+    const [item] = await db.select().from(inventory).where(eq(inventory.id, id));
+    return item;
   }
-  
+
   async getInventoryByProductAndLocation(productId: number, locationId: number): Promise<Inventory | undefined> {
-    return Array.from(this.inventory.values()).find(
-      (inv) => inv.productId === productId && inv.locationId === locationId,
-    );
+    const [item] = await db
+      .select()
+      .from(inventory)
+      .where(
+        and(
+          eq(inventory.productId, productId),
+          eq(inventory.locationId, locationId)
+        )
+      );
+    return item;
   }
-  
+
   async createInventoryItem(insertInventory: InsertInventory): Promise<Inventory> {
-    const id = this.inventoryId++;
-    const inventory: Inventory = { 
-      ...insertInventory, 
-      id, 
-      updatedAt: new Date() 
-    };
-    this.inventory.set(id, inventory);
-    return inventory;
+    const [item] = await db.insert(inventory).values(insertInventory).returning();
+    return item;
   }
-  
+
   async updateInventoryItem(id: number, updateData: Partial<InsertInventory>): Promise<Inventory | undefined> {
-    const inventoryItem = this.inventory.get(id);
-    if (!inventoryItem) return undefined;
-    
-    const updatedInventory: Inventory = { 
-      ...inventoryItem, 
-      ...updateData, 
-      updatedAt: new Date() 
-    };
-    this.inventory.set(id, updatedInventory);
-    return updatedInventory;
+    const [updatedItem] = await db
+      .update(inventory)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(inventory.id, id))
+      .returning();
+    return updatedItem;
   }
-  
+
   async deleteInventoryItem(id: number): Promise<boolean> {
-    return this.inventory.delete(id);
+    const result = await db.delete(inventory).where(eq(inventory.id, id));
+    return true; // If no error is thrown, delete succeeded
   }
-  
-  // Stock Movement methods
+
+  // Stock Movement operations
   async getStockMovements(): Promise<StockMovement[]> {
-    return Array.from(this.stockMovements.values()).sort((a, b) => 
-      b.timestamp.getTime() - a.timestamp.getTime()
-    );
+    return await db.select().from(stockMovements).orderBy(desc(stockMovements.timestamp));
   }
-  
+
   async getStockMovementsWithDetails(): Promise<StockMovementWithDetails[]> {
-    const movements = await this.getStockMovements();
-    return movements.map(movement => {
-      const product = this.products.get(movement.productId);
-      const location = this.locations.get(movement.locationId);
-      
-      return {
-        ...movement,
-        productName: product?.name,
-        locationName: location?.name
-      };
-    });
+    return await db
+      .select({
+        id: stockMovements.id,
+        productId: stockMovements.productId,
+        locationId: stockMovements.locationId,
+        quantity: stockMovements.quantity,
+        note: stockMovements.note,
+        timestamp: stockMovements.timestamp,
+        productName: products.name,
+        locationName: locations.name,
+      })
+      .from(stockMovements)
+      .leftJoin(products, eq(stockMovements.productId, products.id))
+      .leftJoin(locations, eq(stockMovements.locationId, locations.id))
+      .orderBy(desc(stockMovements.timestamp));
   }
-  
+
   async getStockMovement(id: number): Promise<StockMovement | undefined> {
-    return this.stockMovements.get(id);
-  }
-  
-  async createStockMovement(insertMovement: InsertStockMovement): Promise<StockMovement> {
-    const id = this.stockMovementId++;
-    const now = new Date();
-    const movement: StockMovement = { 
-      ...insertMovement, 
-      id, 
-      timestamp: now 
-    };
-    
-    this.stockMovements.set(id, movement);
-    
-    // Update inventory quantity
-    const inventoryItem = await this.getInventoryByProductAndLocation(
-      movement.productId, 
-      movement.locationId
-    );
-    
-    if (inventoryItem) {
-      await this.updateInventoryItem(inventoryItem.id, {
-        quantity: inventoryItem.quantity + movement.quantity
-      });
-    } else if (movement.quantity > 0) {
-      // Create new inventory item if it doesn't exist and quantity is positive
-      await this.createInventoryItem({
-        productId: movement.productId,
-        locationId: movement.locationId,
-        quantity: movement.quantity
-      });
-    }
-    
+    const [movement] = await db.select().from(stockMovements).where(eq(stockMovements.id, id));
     return movement;
   }
-  
-  // Dashboard methods
+
+  async createStockMovement(insertMovement: InsertStockMovement): Promise<StockMovement> {
+    const [movement] = await db.insert(stockMovements).values(insertMovement).returning();
+    return movement;
+  }
+
+  // Dashboard operations
   async getDashboardStats(): Promise<{
     totalProducts: number;
     lowStockItems: number;
     inventoryValue: number;
     stockMovements: number;
   }> {
-    const products = await this.getProducts();
-    const lowStockItems = await this.getLowStockItems();
+    // Get total products
+    const [productsCount] = await db
+      .select({ count: count() })
+      .from(products);
     
-    // Calculate total inventory value
+    // Get low stock items count
+    const inventoryItems = await this.getInventoryItemsWithDetails();
+    const lowStockItems = inventoryItems.filter(item => {
+      return item.quantity < (item.minStockLevel || 0);
+    }).length;
+
+    // Get inventory value
     let inventoryValue = 0;
-    const inventoryItems = await this.getInventoryItems();
-    
     for (const item of inventoryItems) {
-      const product = this.products.get(item.productId);
+      const product = await this.getProduct(item.productId);
       if (product) {
-        inventoryValue += item.quantity * product.unitCost;
+        inventoryValue += Number(product.unitCost) * item.quantity;
       }
     }
-    
-    // Count recent stock movements (last 7 days)
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    
-    const recentMovements = Array.from(this.stockMovements.values()).filter(
-      movement => movement.timestamp > oneWeekAgo
-    );
-    
+
+    // Get stock movement count
+    const [movementsCount] = await db
+      .select({ count: count() })
+      .from(stockMovements);
+
     return {
-      totalProducts: products.length,
-      lowStockItems: lowStockItems.length,
+      totalProducts: productsCount.count,
+      lowStockItems,
       inventoryValue,
-      stockMovements: recentMovements.length
+      stockMovements: movementsCount.count
     };
   }
-  
+
   async getLowStockItems(): Promise<InventoryWithDetails[]> {
     const inventoryItems = await this.getInventoryItemsWithDetails();
     
     return inventoryItems.filter(item => {
-      const product = this.products.get(item.productId);
-      if (!product) return false;
-      
-      return item.quantity <= product.minStockLevel;
+      return item.quantity < (item.minStockLevel || 0);
     }).sort((a, b) => {
-      // Sort by most critical (lowest stock compared to minimum) first
+      // Sort by most critically low first
       const aRatio = a.quantity / (a.minStockLevel || 1);
       const bRatio = b.quantity / (b.minStockLevel || 1);
       return aRatio - bRatio;
     });
   }
-  
+
   async getRecentStockMovements(limit: number): Promise<StockMovementWithDetails[]> {
-    const movements = await this.getStockMovementsWithDetails();
-    return movements.slice(0, limit);
-  }
-  
-  // Helper method to initialize some default data
-  private initializeDefaultData() {
-    // Create categories
-    const categories = [
-      { name: 'Electronics', description: 'Electronic devices and accessories' },
-      { name: 'Furniture', description: 'Office and home furniture' },
-      { name: 'Office Supplies', description: 'General office supplies' },
-      { name: 'Clothing', description: 'Apparel and wearables' }
-    ];
-    
-    categories.forEach(async (cat) => {
-      await this.createCategory(cat);
-    });
-    
-    // Create locations
-    const locations = [
-      { name: 'Warehouse A', description: 'Main storage warehouse' },
-      { name: 'Warehouse B', description: 'Secondary storage facility' },
-      { name: 'Store A', description: 'Retail location downtown' },
-      { name: 'Store B', description: 'Retail location uptown' }
-    ];
-    
-    locations.forEach(async (loc) => {
-      await this.createLocation(loc);
-    });
-    
-    // Create products
-    const products = [
-      { 
-        name: 'Dell XPS 13 Laptop', 
-        sku: 'DXPS-13-9380', 
-        description: 'Dell XPS 13 9380, 16GB RAM, 512GB SSD', 
-        categoryId: 1, 
-        unitCost: 1200, 
-        minStockLevel: 10 
-      },
-      { 
-        name: 'iPhone 13 Pro', 
-        sku: 'IP13-PRO-256', 
-        description: '256GB, Graphite', 
-        categoryId: 1, 
-        unitCost: 999, 
-        minStockLevel: 15 
-      },
-      { 
-        name: 'Samsung QLED TV', 
-        sku: 'SAMS-TV-Q55', 
-        description: '55", 4K UHD', 
-        categoryId: 1, 
-        unitCost: 850, 
-        minStockLevel: 8 
-      },
-      { 
-        name: 'Sony WH-1000XM4', 
-        sku: 'SONY-WH1000XM4', 
-        description: 'Wireless noise-canceling headphones', 
-        categoryId: 1, 
-        unitCost: 299, 
-        minStockLevel: 12 
-      },
-      { 
-        name: 'Office Desk', 
-        sku: 'DESK-OAK-48', 
-        description: '48" Oak Office Desk', 
-        categoryId: 2, 
-        unitCost: 350, 
-        minStockLevel: 5 
-      }
-    ];
-    
-    products.forEach(async (prod) => {
-      await this.createProduct(prod);
-    });
-    
-    // Create inventory
-    const inventoryItems = [
-      { productId: 1, locationId: 1, quantity: 24 },  // Dell XPS at Warehouse A
-      { productId: 2, locationId: 3, quantity: 8 },   // iPhone at Store A
-      { productId: 3, locationId: 2, quantity: 0 },   // Samsung TV at Warehouse B
-      { productId: 4, locationId: 3, quantity: 2 },   // Sony Headphones at Store A
-      { productId: 5, locationId: 1, quantity: 15 }   // Office Desk at Warehouse A
-    ];
-    
-    inventoryItems.forEach(async (inv) => {
-      await this.createInventoryItem(inv);
-    });
-    
-    // Create stock movements
-    const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const lastWeek = new Date(now);
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    
-    const movements = [
-      { 
-        productId: 1, 
-        locationId: 1, 
-        quantity: 25, 
-        note: 'Initial stock', 
-        timestamp: lastWeek 
-      },
-      { 
-        productId: 2, 
-        locationId: 3, 
-        quantity: 12, 
-        note: 'Initial stock', 
-        timestamp: lastWeek 
-      },
-      { 
-        productId: 2, 
-        locationId: 3, 
-        quantity: -5, 
-        note: 'Sales', 
-        timestamp: yesterday 
-      },
-      { 
-        productId: 3, 
-        locationId: 2, 
-        quantity: 5, 
-        note: 'Initial stock', 
-        timestamp: lastWeek 
-      },
-      { 
-        productId: 3, 
-        locationId: 2, 
-        quantity: -5, 
-        note: 'Transferred to Store B', 
-        timestamp: yesterday 
-      },
-      { 
-        productId: 4, 
-        locationId: 3, 
-        quantity: 15, 
-        note: 'Initial stock', 
-        timestamp: lastWeek 
-      },
-      { 
-        productId: 4, 
-        locationId: 3, 
-        quantity: -13, 
-        note: 'Sales', 
-        timestamp: yesterday 
-      },
-      { 
-        productId: 5, 
-        locationId: 1, 
-        quantity: 15, 
-        note: 'Initial stock', 
-        timestamp: lastWeek 
-      }
-    ];
-    
-    movements.forEach(async (mov) => {
-      const { timestamp, ...movement } = mov;
-      const newMovement = await this.createStockMovement(movement);
-      // Manually set the timestamp since createStockMovement sets it to now
-      this.stockMovements.set(newMovement.id, { ...newMovement, timestamp });
-    });
+    const movements = await db
+      .select({
+        id: stockMovements.id,
+        productId: stockMovements.productId,
+        locationId: stockMovements.locationId,
+        quantity: stockMovements.quantity,
+        note: stockMovements.note,
+        timestamp: stockMovements.timestamp,
+        productName: products.name,
+        locationName: locations.name,
+      })
+      .from(stockMovements)
+      .leftJoin(products, eq(stockMovements.productId, products.id))
+      .leftJoin(locations, eq(stockMovements.locationId, locations.id))
+      .orderBy(desc(stockMovements.timestamp))
+      .limit(limit);
+      
+    return movements;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
