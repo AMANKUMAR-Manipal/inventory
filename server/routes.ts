@@ -18,6 +18,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   const router = express.Router();
   
+  // Health check endpoint for Render
+  router.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+  
   // Categories API
   router.get("/categories", async (_req, res) => {
     try {
